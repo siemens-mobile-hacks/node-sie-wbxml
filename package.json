@@ -1,0 +1,32 @@
+{
+	"name": "@sie-js/wbxml",
+	"version": "1.0.0",
+	"type": "module",
+	"main": "dist/src/index.js",
+	"types": "dist/src/index.d.ts",
+	"description": "WBXML converter library",
+	"scripts": {
+		"build": "tsc",
+		"watch": "tsc -w"
+	},
+	"files": [
+		"./dist/src/*",
+		"./build/*.wasm",
+		"./build/*.js"
+	],
+	"imports": {
+		"#build/*": "./build/*"
+	},
+	"keywords": [],
+	"author": "kirill.zhumarin@gmail.com",
+	"license": "LGPL-2.1-or-later",
+	"repository": {
+		"url": "git+https://github.com/siemens-mobile-hacks/node-sie-wbxml.git"
+	},
+	"packageManager": "pnpm@10.20.0",
+	"devDependencies": {
+		"@types/node": "^24.10.0",
+		"tsx": "^4.20.6",
+		"typescript": "^5.9.3"
+	}
+}
