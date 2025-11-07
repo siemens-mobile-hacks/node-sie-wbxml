@@ -1,3 +1,0 @@
-[submodule "third_party/libwbxml"]
-	path = third_party/libwbxml
-	url = https://github.com/libwbxml/libwbxml
