@@ -1,0 +1,35 @@
+diff --git a/src/wbxml_charset.c b/src/wbxml_charset.c
+index 66bc784..1a31591 100644
+--- a/src/wbxml_charset.c
++++ b/src/wbxml_charset.c
+@@ -33,6 +33,7 @@
+  * @brief Charset Functions
+  */
+ 
++#include "wbxml_config_internals.h"
+ #include "wbxml_charset.h"
+ #include "wbxml_internals.h"
+ 
+@@ -163,7 +164,8 @@ WBXML_DECLARE(WBXMLError) wbxml_charset_conv(const WB_TINY        *in_buf,
+         WB_TINY       * tmp_buf      = NULL;
+         WB_TINY       * tmp_ptr      = NULL;
+         WB_ULONG        tmp_buf_len  = 0;
+-        WB_ULONG        tmp_len_left = 0;
++        size_t          tmp_len_left = 0;
++        size_t          in_len_left  = *io_bytes;
+         WBXMLError      ret          = WBXML_OK;
+         iconv_t         cd           = 0;
+         WB_UTINY        last_char    = 0;
+@@ -203,9 +205,10 @@ WBXML_DECLARE(WBXMLError) wbxml_charset_conv(const WB_TINY        *in_buf,
+         /* Convert ! */
+         (void) iconv(cd,
+                      inbuf_ref,
+-                     (size_t*)io_bytes,
++                     &in_len_left,
+                      &tmp_buf,
+-                     (size_t*)&tmp_len_left);
++                     &tmp_len_left);
++        *io_bytes = in_len_left;
+ 
+         /** @todo Check errno (but it doesn't seems to work on windows) */
+ 

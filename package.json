@@ -1,32 +1,58 @@
 {
 	"name": "@sie-js/wbxml",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"type": "module",
-	"main": "dist/src/index.js",
-	"types": "dist/src/index.d.ts",
-	"description": "WBXML converter library",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"description": "WBXML <-> XML converter (libwbxml compiled to WebAssembly) with CLI tools",
 	"scripts": {
-		"build": "tsc",
-		"watch": "tsc -w"
+		"build": "tsc -p tsconfig.build.json",
+		"watch": "tsc -p tsconfig.build.json -w",
+		"build:wasm": "emcmake cmake -B build && cmake --build build -j",
+		"prepack": "tsc -p tsconfig.build.json",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"typecheck": "tsc --noEmit"
+	},
+	"bin": {
+		"wbxml": "dist/bin/wbxml.js",
+		"wbxml2xml": "dist/bin/wbxml2xml.js",
+		"xml2wbxml": "dist/bin/xml2wbxml.js"
 	},
 	"files": [
-		"./dist/src/*",
-		"./build/*.wasm",
-		"./build/*.js"
+		"dist",
+		"src/*.ts",
+		"src/bin",
+		"!src/**/*.test.ts",
+		"build/*.wasm",
+		"build/*.js"
 	],
 	"imports": {
 		"#build/*": "./build/*"
 	},
-	"keywords": [],
+	"keywords": [
+		"wbxml",
+		"xml",
+		"wap",
+		"syncml",
+		"activesync",
+		"ota",
+		"libwbxml",
+		"cli"
+	],
 	"author": "kirill.zhumarin@gmail.com",
 	"license": "LGPL-2.1-or-later",
 	"repository": {
 		"url": "git+https://github.com/siemens-mobile-hacks/node-sie-wbxml.git"
 	},
-	"packageManager": "pnpm@10.20.0",
+	"packageManager": "pnpm@12.18.0+sha512.9d7882d5dc82147ecfc4e062aa34834e0ad0296710a1837a1115ae012127d36b7109e321ac1598a1dd0a65597681b1e99917e12ed0d749eae91187943363beb3",
 	"devDependencies": {
-		"@types/node": "^24.10.0",
-		"tsx": "^4.20.6",
-		"typescript": "^5.9.3"
+		"@types/node": "^26.6.6",
+		"tsx": "^4.23.15",
+		"typescript": "^7.0.2",
+		"vitest": "^5.1.0"
+	},
+	"engines": {
+		"node": ">=20"
 	}
 }

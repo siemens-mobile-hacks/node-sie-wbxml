@@ -224,8 +224,11 @@ int wbxml2xml(
 	);
 	wbxml_conv_wbxml2xml_destroy(conv);
 
-	if (err != WBXML_OK)
+	if (err != WBXML_OK) {
+		if (*out)
+			free(*out);
 		return error_report(out, out_len, (const char *) wbxml_errors_string(err));
+	}
 
 	return 0;
 }

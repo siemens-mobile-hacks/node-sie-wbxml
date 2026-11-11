@@ -1,0 +1,225 @@
+--- a/src/wbxml_encoder.c
++++ b/src/wbxml_encoder.c
+@@ -995,7 +995,7 @@
+  * @return WBXML_OK if parsing is OK, an error code otherwise
+  * @note We have recurrency in this function
+  */
+-static WBXMLError parse_node(WBXMLEncoder *encoder, WBXMLTreeNode *node, WB_BOOL enc_end)
++static WBXMLError parse_node_self(WBXMLEncoder *encoder, WBXMLTreeNode *node, WB_BOOL enc_end)
+ {
+     WBXMLError ret = WBXML_OK;
+     
+@@ -1120,11 +1120,25 @@
+     encoder->current_tag = NULL;
+     encoder->current_node = NULL;
+ 
+-    /* Parse next node */
+-    if (node->next != NULL)
+-        return parse_node(encoder, node->next, TRUE);
+-    else
+-        return WBXML_OK;
++    return WBXML_OK;
++}
++
++
++/**
++ * @brief Parse a node and all its next siblings (iteratively, to avoid deep recursion)
++ */
++static WBXMLError parse_node(WBXMLEncoder *encoder, WBXMLTreeNode *node, WB_BOOL enc_end)
++{
++    WBXMLError ret = WBXML_OK;
++
++    while (node != NULL) {
++        if ((ret = parse_node_self(encoder, node, enc_end)) != WBXML_OK)
++            return ret;
++        node = node->next;
++        enc_end = TRUE;
++    }
++
++    return WBXML_OK;
+ }
+ 
+ 
+@@ -3675,67 +3689,66 @@
+     WB_ULONG i = 0;
+     WB_UTINY *value_left = NULL;
+ 
+-    switch (node->type)
+-    {
+-        case WBXML_TREE_TEXT_NODE:
+-            /* Ignore blank nodes */
+-            if (wbxml_buffer_contains_only_whitespaces(node->content))
++    for (; node != NULL; node = node->next) {
++        switch (node->type)
++        {
++            case WBXML_TREE_TEXT_NODE:
++                /* Ignore blank nodes */
++                if (wbxml_buffer_contains_only_whitespaces(node->content))
++                    break;
++
++                /** @todo Shrink / Strip Blanks */
++
++                /* Only add this string if it is big enough */
++                if (wbxml_buffer_len(node->content) > WBXML_ENCODER_STRING_TABLE_MIN) {
++                    wbxml_list_append(strings, node->content);
++                    WBXML_DEBUG((WBXML_ENCODER, "Strtbl - Collecting String: %s", wbxml_buffer_get_cstr(node->content)));
++                }
+                 break;
+ 
+-            /** @todo Shrink / Strip Blanks */
+-
+-            /* Only add this string if it is big enough */
+-            if (wbxml_buffer_len(node->content) > WBXML_ENCODER_STRING_TABLE_MIN) {
+-                wbxml_list_append(strings, node->content);
+-                WBXML_DEBUG((WBXML_ENCODER, "Strtbl - Collecting String: %s", wbxml_buffer_get_cstr(node->content)));
+-            }
+-            break;
+-
+-        case WBXML_TREE_ELEMENT_NODE:
+-            /* Collect strings in Attributes Values too */
+-            if (node->attrs != NULL) {
+-                for (i = 0; i < wbxml_list_len(node->attrs); i++) {
+-                    /* Get attribute */
+-                    attr = wbxml_list_get(node->attrs, i);
+-
+-                    /* Only add this string if it is big enough */
+-                    if (attr && wbxml_buffer_len(attr->value) > WBXML_ENCODER_STRING_TABLE_MIN) {
+-                        /* This mustn't be a tokenisable Attribute Start */
+-                        attr_entry = wbxml_tables_get_attr_from_xml(encoder->lang,
+-                                                                   (WB_UTINY *) wbxml_attribute_get_xml_name(attr),
+-                                                                   (WB_UTINY *) wbxml_attribute_get_xml_value(attr),
+-                                                                   &value_left);
+-
+-                        /* - If attr_entry is NULL: no Attribute Start found
+-                         * - If attr_entry is not NULL: and Attribute Start is found, but it can be the one with
+-                         *   no Attribute Value associated. So just check that the 'value_left' is the same than
+-                         *   the attribute value we where searching for
+-                         */
+-                        if ((attr_entry == NULL) || ((attr_entry != NULL) && (value_left == (WB_UTINY *) wbxml_attribute_get_xml_value(attr))))
+-                        {
+-                            /* It mustn't contain a tokenisable Attribute Value */
+-                            if (!wbxml_tables_contains_attr_value_from_xml(encoder->lang,
+-                                                                           (WB_UTINY *) wbxml_attribute_get_xml_value(attr)))
++            case WBXML_TREE_ELEMENT_NODE:
++                /* Collect strings in Attributes Values too */
++                if (node->attrs != NULL) {
++                    for (i = 0; i < wbxml_list_len(node->attrs); i++) {
++                        /* Get attribute */
++                        attr = wbxml_list_get(node->attrs, i);
++
++                        /* Only add this string if it is big enough */
++                        if (attr && wbxml_buffer_len(attr->value) > WBXML_ENCODER_STRING_TABLE_MIN) {
++                            /* This mustn't be a tokenisable Attribute Start */
++                            attr_entry = wbxml_tables_get_attr_from_xml(encoder->lang,
++                                                                       (WB_UTINY *) wbxml_attribute_get_xml_name(attr),
++                                                                       (WB_UTINY *) wbxml_attribute_get_xml_value(attr),
++                                                                       &value_left);
++
++                            /* - If attr_entry is NULL: no Attribute Start found
++                             * - If attr_entry is not NULL: and Attribute Start is found, but it can be the one with
++                             *   no Attribute Value associated. So just check that the 'value_left' is the same than
++                             *   the attribute value we where searching for
++                             */
++                            if ((attr_entry == NULL) || ((attr_entry != NULL) && (value_left == (WB_UTINY *) wbxml_attribute_get_xml_value(attr))))
+                             {
+-                                wbxml_list_append(strings, attr->value);
+-                                WBXML_DEBUG((WBXML_ENCODER, "Strtbl - Collecting String: %s", wbxml_buffer_get_cstr(attr->value)));
++                                /* It mustn't contain a tokenisable Attribute Value */
++                                if (!wbxml_tables_contains_attr_value_from_xml(encoder->lang,
++                                                                               (WB_UTINY *) wbxml_attribute_get_xml_value(attr)))
++                                {
++                                    wbxml_list_append(strings, attr->value);
++                                    WBXML_DEBUG((WBXML_ENCODER, "Strtbl - Collecting String: %s", wbxml_buffer_get_cstr(attr->value)));
++                                }
+                             }
+                         }
+                     }
+                 }
+-            }
+-            break;
+-
+-        default:
+-            /* NOOP */
+-            break;
+-    }
++                break;
+ 
+-    if (node->children != NULL)
+-        wbxml_strtbl_collect_strings(encoder, node->children, strings);
++            default:
++                /* NOOP */
++                break;
++        }
+ 
+-    if (node->next != NULL)
+-        wbxml_strtbl_collect_strings(encoder, node->next, strings);
++        if (node->children != NULL)
++            wbxml_strtbl_collect_strings(encoder, node->children, strings);
++    }
+ }
+ 
+ 
+--- a/src/wbxml_tree.c
++++ b/src/wbxml_tree.c
+@@ -983,6 +983,7 @@
+     result->root = NULL;
+     result->orig_charset = orig_charset;
+     result->cur_code_page = 0;
++    result->last_added = NULL;
+ 
+     return result;
+ }
+@@ -1004,6 +1005,7 @@
+ WBXML_DECLARE(WB_BOOL) wbxml_tree_add_node(WBXMLTree *tree, WBXMLTreeNode *parent, WBXMLTreeNode *node)
+ {
+     WBXMLTreeNode *tmp = NULL;
++    WBXMLTreeNode *hint = NULL;
+ 
+     if ((tree == NULL) || (node == NULL))
+         return FALSE;
+@@ -1018,6 +1020,16 @@
+             /* Add this Node to end of Sibbling Node list of Parent */
+             tmp = parent->children;
+ 
++            /* Nodes are usually added in document order, so the last child of
++             * the parent is the last added node or one of its ancestors.
++             * Use it as a starting point to avoid walking all siblings. */
++            for (hint = tree->last_added; hint != NULL; hint = hint->parent) {
++                if (hint->parent == parent) {
++                    tmp = hint;
++                    break;
++                }
++            }
++
+             /* !!! WARNING !!!
+              * EXPAT splits &lt;html&gt; into three separate text nodes.
+              * Therefore it is necessary to scan for splitted text nodes and
+@@ -1071,6 +1083,8 @@
+         tree->root = node;
+     }
+ 
++    tree->last_added = node;
++
+     return TRUE;
+ }
+ 
+@@ -1082,6 +1096,9 @@
+     if ((tree == NULL) || (node == NULL))
+         return WBXML_ERROR_BAD_PARAMETER;
+ 
++    /* The lookup hint may point into the extracted subtree */
++    tree->last_added = NULL;
++
+     /* Parent link */
+     if (node->parent != NULL) {
+         if (node->parent->children == node) {
+--- a/src/wbxml_tree.h
++++ b/src/wbxml_tree.h
+@@ -104,6 +104,7 @@
+     WBXMLTreeNode        *root;         /**< Root Element */
+     WBXMLCharsetMIBEnum   orig_charset; /**< Charset encoding of original document */
+     WB_UTINY              cur_code_page;/**< Last seen code page */
++    WBXMLTreeNode        *last_added;   /**< Last node added with wbxml_tree_add_node() (lookup hint) */
+ } WBXMLTree;
+ 
+ 

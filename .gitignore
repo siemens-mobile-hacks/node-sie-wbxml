@@ -3,6 +3,7 @@ build/
 *.bin
 *.data
 test.ts
+AGENTS.md
 
 # Logs
 logs
